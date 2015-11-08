@@ -6,7 +6,7 @@
     - ubuntu-cloud-keyring
 
 - name: Check Repo
-  shell: cat /etc/apt/sources.list.d/cloudarchive-juno.list | egrep -v "#" |grep juno | wc -l
+  shell: cat /etc/apt/sources.list.d/cloudarchive-juno.list | egrep -v "#" |grep {{ OPENSTACK_RELEASE }} | wc -l
   register: output
 - debug: var=output.stdout
 
@@ -14,13 +14,13 @@
   shell: add-apt-repository -y cloud-archive:juno
   when: output.stdout == "0"
 
-- name: Doing apt-get update
+- name: Doing apt-get Update
   apt: update_cache=yes
 
-- name: Doing apt-get upgrade
+- name: Doing apt-get Upgrade
   apt: upgrade=dist
 
-- name: Reboot machine
+- name: Reboot Machine
   shell: shutdown -r now "Complete APT Update"
   async: 0
   poll: 0
@@ -29,7 +29,7 @@
 - name: Wait for ssh server to be running
   local_action: wait_for port=22 host="{{ inventory_hostname }}" search_regex=OpenSSH
 
-- name: Check SSH Servier
+- name: Check SSH Service is Running or Not
   shell: service ssh status | grep running
   register: output
 - debug: var=output.stdout
