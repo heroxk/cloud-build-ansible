@@ -1,0 +1,58 @@
+#!/usr/bin/env ansible-playbook
+
+- name: Configure Nova Part
+  hosts: compute-02
+  remote_user: root
+  sudo: True
+  tasks:
+  - name: APT Install Packages
+    action: apt pkg={{ item }} state=installed
+    with_items:
+      - qemu-kvm 
+      - virt-manager
+      - nova-api-metadata 
+      - nova-compute 
+      - nova-compute-qemu 
+      - nova-doc 
+      - novnc 
+      - nova-novncproxy 
+
+  - name: Configure 'libvirtd.conf'
+    copy: src=files/libvirtd.conf dest=/etc/libvirt/libvirtd.conf owner=root mode=0644
+
+  - name: Configure 'libvirt.conf'
+    copy: src=files/libvirt.conf dest=/etc/libvirt/libvirt.conf owner=root mode=0644
+
+  - name: Configure 'libvirt-bin.conf'
+    command: sed -i 's/libvirtd_opts="-d"/libvirtd_opts="-d -l"/g' /etc/default/libvirt-bin
+ 
+  - name: Configure 'nova.conf'
+    template: src=templates/compute/nova.conf.j2 dest=/etc/nova/nova.conf owner=nova group=nova mode=0640
+
+  - name: Clean up Nova Log files
+    command: su -s /bin/sh -c "for i in `ls /var/log/nova/nova*`; do echo '' > ${i}; done"
+
+  - name: Copy 'clean' script 
+    template: src=templates/compute/clean.nova dest=/var/log/nova/clean owner=nova group=root mode=0700
+
+  - name: Restart Services
+    service: name={{ item }} state=restarted     
+    with_items:
+    - libvirt-bin
+    - nova-api-metadata
+    - nova-compute
+    - nova-novncproxy
+
+
+
+
+
+
+
+
+
+
+
+
+
+

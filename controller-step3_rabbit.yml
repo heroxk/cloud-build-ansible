@@ -1,0 +1,47 @@
+#!/usr/bin/env ansible-playbook
+
+- name: Configure RabbitMQ
+  hosts: controller
+  remote_user: root
+  sudo: True
+  tasks:
+     - name: APT Install Packages
+       action: apt pkg={{ item }} state=installed
+       with_items:
+         - rabbitmq-server
+
+     - name: Configure 'rabbitmq.config'
+       copy: src=files/rabbitmq/rabbitmq.config dest=/etc/rabbitmq/rabbitmq.config owner=root mode=0644
+
+     - name: Configure 'rabbitmq-env.conf'
+       copy: src=files/rabbitmq/rabbitmq-env.conf dest=/etc/rabbitmq/rabbitmq-env.conf owner=root mode=0644
+
+       notify: restart rabbitmq-server
+        
+  handlers:
+    - name: restart rabbitmq-server
+      service: name=rabbitmq-server state=restarted
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

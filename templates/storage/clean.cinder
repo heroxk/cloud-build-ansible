@@ -1,0 +1,5 @@
+#!/bin/bash
+for i in `ls cinder*.log`; do echo ""> $i; done
+rm -rf *1
+rm -rf *.gz
+

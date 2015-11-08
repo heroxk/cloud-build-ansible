@@ -1,0 +1,302 @@
+#!/bin/bash
+
+export KEYSTONE_CONF=/etc/keystone/keystone.conf
+export SSL_PATH=/usr/local/etc/keystone/ssl/
+export MGT_IP=$(ifconfig br-mgmt | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
+export TENET_IP=$(ifconfig br-vxlan | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
+export EXT_IP=$(ifconfig eth0 | awk '/inet addr/ {split ($2,A,":"); print A[2]}')
+export CONTROLLER_HOST=$(ifconfig eth0 | awk '/inet addr/ {split ($2,A,":"); print A[2]}' | sed 's/\.[0-9]*$/.{{ controller_ip_bits }}/')
+export PUBLIC_IP=${EXT_IP}
+export INT_IP=${MGT_IP}
+export ADMIN_IP=${EXT_IP}
+export PUBLIC_ENDPOINT=$PUBLIC_IP
+export ADMIN_ENDPOINT=$ADMIN_IP
+export INT_ENDPOINT=$INT_IP
+
+
+export MYSQL_HOST=${MGT_IP}
+export MYSQL_ROOT_PASS=openstack
+export MYSQL_DB_PASS=openstack
+export MYSQL_ROOT_PASS=openstack
+export MYSQL_KEYSTONE_PASS=openstack
+
+export KEYSTONE_ADMIN_ENDPOINT=$(ifconfig eth0 | awk '/inet addr/ {split ($2,A,":"); print A[2]}' | sed 's/\.[0-9]*$/.{{ controller_ip_bits }}/')
+export KEYSTONE_ENDPOINT=${KEYSTONE_ADMIN_ENDPOINT}
+export CONTROLLER_EXTERNAL_HOST=${KEYSTONE_ADMIN_ENDPOINT}
+export SERVICE_TENANT_NAME=service
+export SERVICE_PASS=openstack
+export ENDPOINT=${KEYSTONE_ADMIN_ENDPOINT}
+export SERVICE_TOKEN=ADMIN
+export SERVICE_ENDPOINT=https://${KEYSTONE_ADMIN_ENDPOINT}:35357/v2.0
+export MONGO_KEY=MongoFoo
+
+
+
+# Create Endpoints 
+export ENDPOINT=${PUBLIC_IP}
+export INT_ENDPOINT=${INT_IP}
+export ADMIN_ENDPOINT=${ADMIN_IP}
+export SERVICE_TOKEN=ADMIN
+export SERVICE_ENDPOINT=https://${KEYSTONE_ADMIN_ENDPOINT}:35357/v2.0
+export PASSWORD=openstack
+export OS_CACERT=/usr/local/etc/keystone/ssl/certs/ca.pem
+export OS_KEY=/usr/local/etc/keystone/ssl/certs/cakey.pem
+export OS_AUTH_URL=https://${KEYSTONE_ADMIN_ENDPOINT}:35357/v2.0
+export OS_NO_CACHE=1
+
+
+#cd /etc/keystone/
+#rm -rf /usr/local/etc/keystone/ssl
+#keystone-manage ssl_setup --keystone-user keystone --keystone-group keystone
+cp /usr/local/etc/keystone/ssl/certs/ca.pem /etc/ssl/certs/ca.pem
+c_rehash /etc/ssl/certs/ca.pem
+
+
+###############################
+# Create Services
+###############################
+keystone service-create --name nova --type compute --description 'OpenStack Compute Service'
+keystone service-create --name ec2 --type ec2 --description 'EC2 Service'
+keystone service-create --name glance --type image --description 'OpenStack Image Service'
+keystone service-create --name keystone --type identity --description 'OpenStack Identity Service'
+keystone service-create --name volume --type volume --description 'Volume Service'
+keystone service-create --name network --type network --description 'Neutron Network Service'
+keystone service-create --name ceilometer --type metering --description "Ceilometer Metering Service"
+keystone service-create --name heat --type orchestration --description "Orchestration"
+keystone service-create --name heat-cfn --type cloudformation --description="Heat CloudFormation API"
+
+
+
+###############################
+# Create Roles
+###############################
+# Admin Tenant
+keystone tenant-create --name admin --description "Admin Tenant" --enabled true
+# Admin role
+keystone role-create --name admin
+# Member role
+keystone role-create --name Member
+keystone role-list
+
+
+###############################
+# Create Tenant, Admin User
+###############################
+keystone tenant-create --name cookbook --description "Default Cookbook Tenant" --enabled true
+TENANT_ID=$(keystone tenant-list | awk '/\ cookbook\ / {print $2}')
+keystone user-create --name admin --tenant_id $TENANT_ID --pass $PASSWORD --email root@localhost --enabled true
+TENANT_ID=$(keystone tenant-list | awk '/\ cookbook\ / {print $2}')
+ADMIN_TENANT_ID=$(keystone tenant-list | awk '/\ admin\ / {print $2}')
+ROLE_ID=$(keystone role-list | awk '/\ admin\ / {print $2}')
+USER_ID=$(keystone user-list | awk '/\ admin\ / {print $2}')
+keystone user-role-add --user $USER_ID --role $ROLE_ID --tenant_id $TENANT_ID
+keystone user-role-add --user $USER_ID --role $ROLE_ID --tenant_id $ADMIN_TENANT_ID
+
+
+##############################################################
+# Demo User
+##############################################################
+PASSWORD=openstack
+keystone user-create --name demo --tenant_id $TENANT_ID --pass $PASSWORD --email demo@localhost --enabled true
+TENANT_ID=$(keystone tenant-list | awk '/\ cookbook\ / {print $2}')
+ROLE_ID=$(keystone role-list | awk '/\ Member\ / {print $2}')
+USER_ID=$(keystone user-list | awk '/\ demo\ / {print $2}')
+keystone user-role-add --user $USER_ID --role $ROLE_ID --tenant_id $TENANT_ID
+
+##############################################################
+# Service Tenant
+##############################################################
+keystone tenant-create --name service --description "Service Tenant" --enabled true
+SERVICE_TENANT_ID=$(keystone tenant-list | awk '/\ service\ / {print $2}')
+
+##############################################################
+# Service USER Create
+##############################################################
+keystone user-create --name nova --pass nova --tenant_id $SERVICE_TENANT_ID --email nova@localhost --enabled true
+keystone user-create --name glance --pass glance --tenant_id $SERVICE_TENANT_ID --email glance@localhost --enabled true
+keystone user-create --name keystone --pass keystone --tenant_id $SERVICE_TENANT_ID --email keystone@localhost --enabled true
+keystone user-create --name cinder --pass cinder --tenant_id $SERVICE_TENANT_ID --email cinder@localhost --enabled true
+keystone user-create --name neutron --pass neutron --tenant_id $SERVICE_TENANT_ID --email neutron@localhost --enabled true
+keystone user-create --name=ceilometer --pass=ceilometer --email ceilomoter@localhost --enabled true
+keystone user-create --name=heat --pass=heat --email=heat@localhost --enabled true
+
+
+##############################################################
+# Service USER + Admin Role + Service Tenant
+##############################################################
+# Get the nova user id
+NOVA_USER_ID=$(keystone user-list | awk '/\ nova\ / {print $2}')
+# Get the admin role id
+ADMIN_ROLE_ID=$(keystone role-list | awk '/\ admin\ / {print $2}')
+# Assign the nova user the admin role in service tenant
+keystone user-role-add --user $NOVA_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
+# Get the glance user id
+GLANCE_USER_ID=$(keystone user-list | awk '/\ glance\ / {print $2}')
+# Assign the glance user the admin role in service tenant
+keystone user-role-add --user $GLANCE_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
+# Get the keystone user id
+KEYSTONE_USER_ID=$(keystone user-list | awk '/\ keystone\ / {print $2}')
+# Assign the keystone user the admin role in service tenant
+keystone user-role-add --user $KEYSTONE_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
+# Get the cinder user id
+CINDER_USER_ID=$(keystone user-list | awk '/\ cinder \ / {print $2}')
+# Assign the cinder user the admin role in service tenant
+keystone user-role-add --user $CINDER_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
+# Create neutron service user in the services tenant
+NEUTRON_USER_ID=$(keystone user-list | awk '/\ neutron \ / {print $2}')
+# Grant admin role to neutron service user
+keystone user-role-add --user $NEUTRON_USER_ID --role $ADMIN_ROLE_ID --tenant_id $SERVICE_TENANT_ID
+# Add Ceilometer
+keystone user-role-add --user ceilometer --tenant service --role admin
+# Add Role to Heat
+HEAT_USER_ID=$(keystone user-list | awk '/\ heat \ / {print $2}')
+echo $HEAT_USER_ID
+keystone user-role-add --user $HEAT_USER_ID --role $ADMIN_ROLE_ID --tenant $SERVICE_TENANT_ID
+
+
+
+
+###############################
+# Create Endpoint
+###############################
+
+# For NOVA
+NOVA_SERVICE_ID=$(keystone service-list | awk '/\ nova\ / {print $2}')
+echo $NOVA_SERVICE_ID
+
+# Set URL
+PUBLIC="http://$PUBLIC_ENDPOINT:8774/v2/\$(tenant_id)s"
+ADMIN="http://$ADMIN_ENDPOINT:8774/v2/\$(tenant_id)s"
+INTERNAL="http://$INT_ENDPOINT:8774/v2/\$(tenant_id)s"
+echo $PUBLIC
+echo $ADMIN
+echo $INTERNAL
+
+# Add to Database
+keystone endpoint-create --region RegionOne --service_id $NOVA_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+
+# FOR EC2 API
+EC2_SERVICE_ID=$(keystone service-list | awk '/\ ec2\ / {print $2}')
+echo $EC2_SERVICE_ID
+
+# Set URL
+PUBLIC="http://$PUBLIC_ENDPOINT:8773/services/Cloud"
+ADMIN="http://$ADMIN_ENDPOINT:8773/services/Admin"
+INTERNAL="http://$INT_ENDPOINT:8773/services/Cloud"
+echo $PUBLIC
+echo $ADMIN
+echo $INTERNAL
+
+# Add to Database
+keystone endpoint-create --region RegionOne --service_id $EC2_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+
+# For Glance
+GLANCE_SERVICE_ID=$(keystone service-list | awk '/\ glance\ / {print $2}')
+echo $GLANCE_SERVICE_ID
+
+# Set URL
+PUBLIC="http://$PUBLIC_ENDPOINT:9292/v1"
+ADMIN="http://$ADMIN_ENDPOINT:9292/v1"
+INTERNAL="http://$INT_ENDPOINT:9292/v1"
+echo $PUBLIC
+echo $ADMIN
+echo $INTERNAL
+
+# Add to Database
+keystone endpoint-create --region RegionOne --service_id $GLANCE_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+
+
+# For Keystone
+KEYSTONE_SERVICE_ID=$(keystone service-list | awk '/\ keystone\ / {print $2}')
+echo $KEYSTONE_SERVICE_ID
+
+# Set URL
+PUBLIC="https://$PUBLIC_ENDPOINT:5000/v2.0"
+ADMIN="https://$ADMIN_ENDPOINT:35357/v2.0"
+INTERNAL="https://$INT_ENDPOINT:5000/v2.0"
+echo $PUBLIC
+echo $ADMIN
+echo $INTERNAL
+
+# Add to Database
+keystone endpoint-create --region RegionOne --service_id $KEYSTONE_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+
+
+
+# For Neutron
+NEUTRON_SERVICE_ID=$(keystone service-list | awk '/\ network\ / {print $2}')
+echo $NEUTRON_SERVICE_ID
+
+# Set URL
+PUBLIC="http://$PUBLIC_ENDPOINT:9696"
+ADMIN="http://$ADMIN_ENDPOINT:9696"
+INTERNAL="http://$INT_ENDPOINT:9696"
+echo $PUBLIC
+echo $ADMIN
+echo $INTERNAL
+
+# Add to Database
+keystone endpoint-create --region RegionOne --service_id $NEUTRON_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+
+
+
+# For Cinder
+CINDER_SERVICE_ID=$(keystone service-list | awk '/\ volume\ / {print $2}')
+echo $CINDER_SERVICE_ID
+
+# Set URL
+PUBLIC="http://$PUBLIC_ENDPOINT:8776/v1/%(tenant_id)s"
+ADMIN=$PUBLIC
+INTERNAL=$PUBLIC
+echo $PUBLIC
+echo $ADMIN
+echo $INTERNAL
+
+# Add to Database
+keystone endpoint-create --region RegionOne --service_id $CINDER_SERVICE_ID --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+
+# For Ceilometer
+METERING_SERVICE_ID=$(keystone service-list | awk '/\ ceilometer\ / {print $2}')
+# Set URL
+PUBLIC="http://$PUBLIC_ENDPOINT:8777"
+ADMIN=$PUBLIC
+INTERNAL=$PUBLIC
+echo $PUBLIC
+echo $ADMIN
+echo $INTERNAL
+keystone endpoint-create --region RegionOne --service-id ${METERING_SERVICE_ID} --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+
+
+# For Heat
+ORCHESTRATION_SERVICE_ID=$(keystone service-list | awk '/\ orchestration\ / {print $2}')
+# Set URL
+PUBLIC="http://$PUBLIC_ENDPOINT:8004/v1/%(tenant_id)s"
+ADMIN=$PUBLIC
+INTERNAL=$PUBLIC
+echo $PUBLIC
+echo $ADMIN
+echo $INTERNAL
+keystone endpoint-create --region RegionOne --service-id ${ORCHESTRATION_SERVICE_ID} --publicurl $PUBLIC --adminurl $ADMIN --internalurl $INTERNAL
+
+CLOUDFORMATION_SERVICE_ID=$(keystone service-list | awk '/\ cloudformation\ / {print $2}')
+echo $CLOUDFORMATION_SERVICE_ID
+# Set URL
+PUBLIC="http://$PUBLIC_ENDPOINT:8000/v1"
+ADMIN=$PUBLIC
+INTERNAL=$PUBLIC
+echo $PUBLIC
+echo $ADMIN
+echo $INTERNAL
+keystone --insecure endpoint-create --region RegionOne --service-id=${CLOUDFORMATION_SERVICE_ID} --publicurl=http://172.16.0.200:8000/v1/ --internalurl=http://172.16.0.200:8000/v1 --adminurl=http://172.16.0.200:8000/v1
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,96 @@
+controller_ip_bits: 100
+network_ip_bits: 103
+compute01_ip_bits: 106
+compute02_ip_bits: 107
+cinder_ip_bits: 104
+
+host_ip_bits: "{{ cinder_ip_bits }}"
+
+
+MGT_SUBNET: 172.16.0
+EXT_SUBNET: 192.172.70
+TENENT_SUBNET: 10.10.0
+
+MGT_IP: "{{ MGT_SUBNET }}.{{ host_ip_bits }}"
+TENENT_IP: "{{ TENENT_SUBNET }}.{{ host_ip_bits }}"
+EXT_IP: "{{ EXT_SUBNET }}.{{ host_ip_bits }}" 
+
+CONTROLLER_IP: "{{ EXT_SUBNET }}.{{ controller_ip_bits }}"
+CONTROLLER_HOST: "{{ CONTROLLER_IP }}"
+CONTROLLER_MGT_IP: "{{ MGT_SUBNET }}.{{ controller_ip_bits }}"
+CINDER_ENDPOINT: "{{ MGT_SUBNET }}.{{ cinder_ip_bits }}"
+
+MYSQL_HOST: "{{ CONTROLLER_IP }}"
+MYSQL_ROOT_PASS: openstack
+MYSQL_DB_PASS: openstack
+MYSQL_KEYSTONE_PASS: openstack
+MYSQL_GLANCE_PASS: openstack
+MYSQL_NOVA_PASS: openstack
+MYSQL_NEUTRON_PASS: openstack
+MYSQL_CINDER_PASS: openstack
+
+RABBITMQ_HOST: "{{ CONTROLLER_IP }}"
+
+OS_CACERT: /usr/local/etc/keystone/ssl/certs/ca.pem
+OS_KEY: /usr/local/etc/keystone/ssl/certs/cakey.pem
+SERVICE_TENANT: service
+NOVA_SERVICE_USER: nova
+NOVA_SERVICE_PASS: nova
+NOVA_CONF: /etc/nova/nova.conf
+NOVA_API_PASTE: /etc/nova/api-paste.ini
+
+
+KEYSTONE_ADMIN_ENDPOINT: "{{ CONTROLLER_IP }}"
+CONTROLLER_EXTERNAL_HOST: "{{ KEYSTONE_ADMIN_ENDPOINT }}"
+KEYSTONE_ENDPOINT: "{{ KEYSTONE_ADMIN_ENDPOINT }}"
+
+GLANCE_HOST: "{{ CONTROLLER_IP }}"
+GLANCE_API_CONF: /etc/glance/glance-api.conf
+GLANCE_REGISTRY_CONF: /etc/glance/glance-registry.conf
+SERVICE_TENANT: service
+GLANCE_SERVICE_USER: glance
+GLANCE_SERVICE_PASS: glance
+
+NEUTRON_CONF: /etc/neutron/neutron.conf
+NEUTRON_PLUGIN_ML2_CONF_INI: /etc/neutron/plugins/ml2/ml2_conf.ini
+NEUTRON_L3_AGENT_INI: /etc/neutron/l3_agent.ini
+NEUTRON_DHCP_AGENT_INI: /etc/neutron/dhcp_agent.ini
+NEUTRON_METADATA_AGENT_INI: /etc/neutron/metadata_agent.ini
+NEUTRON_SERVICE_USER: neutron
+NEUTRON_SERVICE_PASS: neutron
+
+CINDER_SERVICE_USER: cinder
+CINDER_SERVICE_PASS: cinder
+
+
+
+
+LIBVIRT: KVM
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

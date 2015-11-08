@@ -1,0 +1,3 @@
+#!/bin/bash
+echo "" > neutron-netns-cleanup.log
+echo "" > server.log

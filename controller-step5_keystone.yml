@@ -1,0 +1,49 @@
+#!/usr/bin/env ansible-playbook
+
+- name: Configure Keystone
+  hosts: controller
+  remote_user: root
+  sudo: True
+  tasks:
+  - name: APT Install Packages
+    action: apt pkg={{ item }} state=installed
+    with_items:
+      - ntp 
+      - keystone 
+      - python-keyring 
+      - python-keystoneclient
+
+  - name: Configure Keystone DB user
+    command: "{{item}}"
+    with_items:
+      - mysql -uroot -p{{ MYSQL_ROOT_PASS }} -e 'DROP DATABASE keystone;'
+      - mysql -uroot -p{{ MYSQL_ROOT_PASS }} -e 'CREATE DATABASE keystone;'
+      - mysql -uroot -p{{ MYSQL_ROOT_PASS }} -e "GRANT ALL PRIVILEGES ON keystone.* TO 'keystone'@'localhost' IDENTIFIED BY '{{ MYSQL_KEYSTONE_PASS }}';"
+      - mysql -uroot -p{{ MYSQL_ROOT_PASS }} -e "GRANT ALL PRIVILEGES ON keystone.* TO 'keystone'@'%' IDENTIFIED BY '{{ MYSQL_KEYSTONE_PASS }}';"
+
+#     - name: Copy key files
+#       copy: src=/usr/local/etc/keystone dest=/usr/local/etc/ owner=root mode=0777
+    ignore_errors: True
+
+  - name: Copy 'clean' script 
+    template: src=templates/controller/clean.keystone dest=/var/log/nova/clean owner=keystone group=root mode=0700
+
+
+  - name: Configure 'keystone.conf'
+    template: src=templates/controller/keystone.conf.j2 dest=/etc/keystone/keystone.conf owner=keystone group=root mode=0644
+    notify: restart keystone
+
+  - name: Keystone DB Table Create
+    command: keystone-manage db_sync
+
+  - name: Keystone Add User, Service, Tenant, Endpoints
+    template: src=templates/controller/keystone_add.sh.j2 dest=/tmp/keystone_add.sh owner=root mode=0744
+
+  - name: Create User, Role, Service, Tanent, Endpoint
+    command: /tmp/keystone_add.sh
+        
+  handlers:
+    - name: restart keystone
+      service: name=keystone state=restarted
+
+

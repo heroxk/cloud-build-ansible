@@ -1,0 +1,71 @@
+# interfaces(5) file used by ifup(8) and ifdown(8)
+auto lo
+  iface lo inet loopback
+
+
+#############################
+# Physical Interface
+#############################
+# First Interface, Onboard 1G NIC
+auto eth0
+  iface eth0 inet manual
+#  iface eth0 inet static
+#  address {{ EXT_IP }}
+#  netmask 255.255.255.0
+#  gateway {{ EXT_SUBNET }}.1
+#  dns-nameservers 8.8.8.8
+
+# Neutron Network
+auto eht1
+  iface eth1 inet manual
+
+#############################
+# VLAN Sub Interface
+#############################
+# Managerment VLAN
+auto eth0.1000 
+  iface eth0.100 inet manual
+  vlan-raw-device eth0
+
+# VLAN for Openstack VXLAN 
+auto eth1.2000 
+  iface eth1.2000 inet manual
+  vlan-raw-device eth1
+
+#############################
+# Bridge Interface
+#############################
+# Openstack Management Interface
+auto br-mgmt
+  iface br-mgmt inet static
+  bridge_stp off
+  bridge_waitport 0
+  bridge_fd 0
+  bridge_ports eth0.1000
+  address {{ MGT_IP }}
+  netmask 255.255.0.0
+  dns-nameservers 8.8.8.8
+
+auto br-vlan
+  iface br-vlan inet manual
+  bridge_stp off
+  bridge_waitport 0
+  bridge_fd 0
+  bridge_ports eth1
+
+auto br-vxlan
+  iface br-vxlan inet static
+  bridge_stp off
+  bridge_waitport 0
+  bridge_fd 0
+  bridge_ports eth1.2000
+  address {{ TENENT_IP }}
+  netmask 255.255.255.0
+  dns-nameservers 8.8.8.8
+
+auto br-ex
+  iface br-ex inet static
+  address {{ EXT_IP }}
+  netmask 255.255.255.0
+  gateway {{ EXT_SUBNET }}.1
+  dns-nameservers 8.8.8.8

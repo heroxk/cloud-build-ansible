@@ -1,0 +1,47 @@
+#!/usr/bin/env ansible-playbook
+
+- name: Configure Glance
+  hosts: controller
+  remote_user: root
+  sudo: True
+  tasks:
+  - name: APT Install Packages
+    action: apt pkg={{ item }} state=installed
+    with_items:
+      - glance
+      - python-glanceclient
+
+  - name: Configure Glance DB user
+    command: "{{item}}"
+    with_items:
+      - mysql -uroot -p{{ MYSQL_ROOT_PASS }} -e 'DROP DATABASE glance;'
+      - mysql -uroot -p{{ MYSQL_ROOT_PASS }} -e 'CREATE DATABASE glance;'
+      - mysql -uroot -p{{ MYSQL_ROOT_PASS }} -e "GRANT ALL PRIVILEGES ON glance.* TO 'glance'@'localhost' IDENTIFIED BY '{{ MYSQL_GLANCE_PASS }}';"
+      - mysql -uroot -p{{ MYSQL_ROOT_PASS }} -e "GRANT ALL PRIVILEGES ON glance.* TO 'glance'@'%' IDENTIFIED BY '{{ MYSQL_GLANCE_PASS }}';"
+    ignore_errors: True
+
+  - name: Configure 'glance-registry.conf'
+    template: src=templates/controller/glance-registry.conf.j2 dest=/etc/glance/glance-registry.conf owner=glance group=root mode=0644
+    notify: restart glance-registry
+
+  - name: Configure 'glance-api.conf'
+    template: src=templates/controller/glance-api.conf.j2 dest=/etc/glance/glance-api.conf owner=glance group=root mode=0644
+
+  - name: restart glance-registry
+    service: name=glance-registry state=restarted
+
+  - name: restart glance-api
+    service: name=glance-api state=restarted
+
+  - name: Glance DB Table Create
+    command: glance-manage db_sync
+
+  - name: Copy 'Glance Add Image' Bash Script
+    template: src=templates/controller/glance_img_add.sh.j2 dest=/tmp/glance_img_add.sh owner=root mode=0744
+
+  - name: Run 'Glance Add Image' Bash Script
+    command: /tmp/glance_img_add.sh
+        
+
+
+

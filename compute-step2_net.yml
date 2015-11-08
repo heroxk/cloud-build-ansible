@@ -1,0 +1,38 @@
+#!/usr/bin/env ansible-playbook
+- name: Configure Node Network with Bridges and VLANs
+  hosts: compute-01
+  remote_user: root
+  sudo: True
+  tasks:
+     - name: Step 1a. APT Install Network Packages
+       action: apt pkg={{ item }} state=installed
+       with_items:
+         - linux-headers-{{ ansible_kernel }}
+         - openvswitch-switch
+         - openvswitch-datapath-dkms
+         - vlan
+         - bridge-utils
+
+     - name: Set up rp_filter
+       copy: src=files/sysctl.conf dest=/etc/sysctl.conf owner=root mode=0644
+       notify: Sysctl Change Apply
+
+     - name: Step 1b. Configure Interface File
+       template: src=templates/compute/interfaces.j2 dest=/etc/network/interfaces mode=0644
+
+     - name: Add OVS-Bridge
+       command: "{{item}}"
+       with_items: 
+         - ovs-vsctl add-br br-int
+         - ovs-vsctl add-br br-ex
+         - ovs-vsctl add-port br-ex eth0
+
+     - name: reboot machine
+       command: shutdown -r now "Complete NIC Config"
+       async: 0
+       poll: 0
+       ignore_errors: true
+
+  handlers:
+    - name: Sysctl Change Apply
+      command: sysctl -p

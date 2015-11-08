@@ -1,0 +1,75 @@
+[DEFAULT]
+admin_token = ADMIN
+log_dir=/var/log/keystone
+
+[assignment]
+
+[auth]
+
+[cache]
+
+[catalog]
+
+[credential]
+
+[database]
+connection = mysql://keystone:{{ MYSQL_KEYSTONE_PASS }}@{{ MYSQL_HOST }}/keystone
+
+[ec2]
+
+[endpoint_filter]
+
+[endpoint_policy]
+
+[federation]
+
+[identity]
+
+[identity_mapping]
+
+[kvs]
+
+[ldap]
+
+[matchmaker_redis]
+
+[matchmaker_ring]
+
+[memcache]
+
+[oauth1]
+
+[os_inherit]
+
+[paste_deploy]
+
+[policy]
+
+[revoke]
+
+[saml]
+
+[signing]
+
+[ssl]
+
+[stats]
+
+[token]
+
+[trust]
+
+[extra_headers]
+Distribution = Ubuntu
+use_syslog = True
+syslog_log_facility = LOG_LOCAL0
+use_syslog = True
+syslog_log_facility = LOG_LOCAL0
+
+[ssl]
+enable = True
+certfile = /usr/local/etc/keystone/ssl/certs/signing_cert.pem
+keyfile = /usr/local/etc/keystone/ssl/private/signing_key.pem
+ca_certs = /usr/local/etc/keystone/ssl/certs/ca.pem
+cert_subject=/C=US/ST=Unset/L=Unset/O=Unset/CN={{ KEYSTONE_ADMIN_ENDPOINT }}
+ca_key = /usr/local/etc/keystone/ssl/certs/cakey.pem

@@ -1,0 +1,36 @@
+[DEFAULT]
+rootwrap_config = /etc/cinder/rootwrap.conf
+api_paste_confg = /etc/cinder/api-paste.ini
+
+iscsi_helper = tgtadm
+volume_name_template = volume-%s
+volume_group = cinder-volumes
+verbose = True
+auth_strategy = keystone
+state_path = /var/lib/cinder
+lock_path = /var/lock/cinder
+volumes_dir = /var/lib/cinder/volumes
+
+my_ip = {{ MGT_IP }}
+
+glance_host = {{ CONTROLLER_MGT_IP }}
+
+# Messaging
+rpc_backend = rabbit
+rabbit_host={{ RABBITMQ_HOST }}
+rabbit_port = 5672
+
+
+[database]
+backend = sqlalchemy
+connection = mysql://cinder:openstack@{{ MYSQL_HOST }}/cinder
+
+[keystone_authtoken]
+auth_uri = https://{{ KEYSTONE_ADMIN_ENDPOINT }}:35357/v2.0/
+identity_uri = https://{{ KEYSTONE_ADMIN_ENDPOINT }}:5000
+admin_tenant_name = {{ SERVICE_TENANT }}
+admin_user = {{ CINDER_SERVICE_USER }}
+admin_password = {{ CINDER_SERVICE_PASS }}
+#signing_dir = \$state_path/keystone-signing
+insecure = True
+

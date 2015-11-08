@@ -1,0 +1,39 @@
+#!/usr/bin/env ansible-playbook
+
+- name: Configure Cinder Serviceon Controller Node
+  hosts: storage
+  remote_user: root
+  sudo: True
+  tasks:
+  - name: APT Install Packages
+    action: apt pkg={{ item }} state=installed
+    with_items:
+      - qemu-kvm 
+      - build-essential
+      - python-mysqldb 
+      - xfsprogs
+      - cinder-api 
+      - cinder-scheduler 
+      - cinder-volume 
+      - open-iscsi 
+      - python-cinderclient 
+      - tgt 
+      - iscsitarget 
+      - iscsitarget-dkms
+
+  - name: Configure 'cinder.conf'
+    template: src=templates/storage/cinder.conf.j2 dest=/etc/cinder/cinder.conf owner=cinder group=cinder mode=0640
+
+#  - name: Sync Cinder in DB
+#    shell: cinder-manage db sync
+
+  - name: Copy 'clean' script 
+    template: src=templates/storage/clean.cinder dest=/var/log/cinder/clean owner=cinder group=root mode=0700
+
+  - name: Restart Cinder-related Services
+    service: name={{ item }} state=restarted     
+    with_items:
+#    - cinder-scheduler
+#    - cinder-api
+    - tgt
+    - cinder-volume

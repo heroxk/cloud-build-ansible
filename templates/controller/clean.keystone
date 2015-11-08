@@ -1,0 +1,4 @@
+#!/bin/bash
+for i in `ls keystone*.log`; do echo ""> $i; done
+rm -rf *1
+rm -rf *.gz

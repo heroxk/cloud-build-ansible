@@ -1,0 +1,25 @@
+#!/usr/bin/env ansible-playbook
+
+- name: Configure Ceilometer Serviceon Controller Node
+  hosts: compute-01
+  remote_user: root
+  sudo: True
+  tasks:
+  - name: APT Install Packages
+    action: apt pkg={{ item }} state=installed
+    with_items:
+    - ceilometer-agent-compute
+
+  - name: Configure 'ceilometer.conf'
+    template: src=templates/controller/ceilometer.conf.j2 dest=/etc/ceilometer/ceilometer.conf owner=ceilometer group=ceilometer mode=0644
+
+  - name: Copy 'clean' script 
+    template: src=templates/controller/clean.ceilometer dest=/var/log/ceilometer/clean owner=ceilometer group=ceilometer mode=0744
+
+  - name: Restart Ceilometer Services
+    service: name={{ item }} state=restarted     
+    with_items:
+    - nova-compute
+    - ceilometer-agent-compute
+
+

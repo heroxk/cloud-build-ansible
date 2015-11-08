@@ -1,0 +1,12 @@
+rm -f *log.1
+rm -rf *.gz
+rm -f neutron-ns*
+echo "" > dhcp-agent.log
+echo "" > l3-agent.log
+echo "" > metadata-agent.log
+echo "" > neutron-netns-cleanup.log
+echo "" > openvswitch-agent.log
+echo "" > ovs-cleanup.log
+echo "" > neutron*metadata-*.log
+echo "" > server.log     
+echo "" > lbaas-agent.log                                        

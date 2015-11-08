@@ -1,0 +1,149 @@
+#!/bin/bash
+export OS_TENANT_NAME=admin
+export OS_USERNAME=admin
+export OS_PASSWORD=openstack
+export OS_AUTH_URL=https://{{ KEYSTONE_ADMIN_ENDPOINT }}:35357/v2.0
+export OS_NO_CACHE=1
+export OS_CACERT=/usr/local/etc/keystone/ssl/certs/ca.pem
+export OS_KEY=/usr/local/etc/keystone/ssl/certs/cakey.pem
+export PASSWORD=openstack
+
+
+
+############################
+# Step 1 - Create MASSIVE3 NET
+############################
+
+Tenant_Name="massive3"
+User_Name="massive_admin"
+Tenant_Net="massive3_network_1"
+Tenant_Subnet="massive3_subnet_1"
+Tenant_Router="massive3_router_1"
+SUBNET="10.220.0"
+
+keystone tenant-create --name ${Tenant_Name} --description "MASSIVE3 Tenant" --enabled true
+
+TENANT_ID=$(keystone tenant-list | grep ${Tenant_Name} | awk {'print $2'})
+echo ${TENANT_ID}
+
+ADMIN_TENANT_ID=$(keystone tenant-list | grep admin | awk {'print $2'})
+echo ${ADMIN_TENANT_ID}
+
+ROLE_ID=$(keystone role-list | awk '/\ admin\ / {print $2}')
+echo $ROLE_ID
+
+keystone user-create --name ${User_Name} --tenant_id ${TENANT_ID} --pass ${PASSWORD} --email root@localhost --enabled true
+
+USER_ID=$(keystone user-list | grep ${User_Name} | awk {'print $2'})
+echo $USER_ID
+
+keystone user-role-add --user $USER_ID --role $ROLE_ID --tenant_id $TENANT_ID
+
+neutron port-list
+neutron router-list
+neutron net-list
+neutron subnet-list
+
+# Create Tenant Network
+neutron net-create --tenant-id ${TENANT_ID} ${Tenant_Net}
+neutron subnet-create --tenant-id ${TENANT_ID} --name ${Tenant_Subnet} ${Tenant_Net} --gateway ${SUBNET}.1 ${SUBNET}.0/24
+neutron router-create --tenant-id ${TENANT_ID} ${Tenant_Router}
+neutron router-interface-add ${Tenant_Router} ${Tenant_Subnet}
+
+
+export OS_TENANT_NAME=massive3
+export OS_USERNAME=massive_admin
+export OS_PASSWORD=openstack
+
+
+
+############################
+# Step 2 - Create Floating NET
+############################
+
+# Create Floating IP
+neutron net-create --tenant-id ${ADMIN_TENANT_ID} --router:external=True floatingNet
+neutron subnet-create --tenant-id ${ADMIN_TENANT_ID} --name floatingSubnet --allocation-pool start=192.172.70.150,end=192.172.70.159 --enable_dhcp=False floatingNet 192.172.70.0/24
+
+################################
+# Step 4 - Plug the tenant router to floatNet 
+################################
+# For MCC3 
+Tenant_Router="massive3_router_1"
+neutron router-gateway-set ${Tenant_Router} floatingNet
+
+# For Massive3
+Tenant_Router="mcc3_router_1"
+neutron router-gateway-set ${Tenant_Router} floatingNet
+
+
+# Working
+#neutron router-gateway-set ${Tenant_Router} ext-net
+
+neutron ext-list
+neutron net-list
+neutron subnet-list
+neutron port-list
+
+
+################################
+# Step 5 - Add Key 
+################################
+KeyName="massive3_key"
+nova keypair-add --pub-key ~/.ssh/id_rsa.pub ${KeyName}
+
+nova keypair-list
+
+################################
+# Step 6 - Find Host 
+################################
+nova hypervisor-list
+
+GLANCE_IMG_ID=$(glance image-list | awk '/trusty/ {print $2}')
+echo $GLANCE_IMG_ID
+
+################################
+# Step 7 - Create Massive
+################################
+
+# MASSIVE3 
+Tenant_Net_ID=$(neutron net-list | grep ${Tenant_Net} | awk {'print $2'})
+echo ${Tenant_Net_ID}
+
+# MASSIVE Login Nodes
+Instance_Name=mss3-login1
+nova boot ${Instance_Name} --image $GLANCE_IMG_ID --availability-zone nova:compute-01 --flavor 2 --nic net-id=${Tenant_Net_ID} --security-group default --key_name ${KeyName}
+
+Instance_Name=mss3-login2
+nova boot ${Instance_Name} --image $GLANCE_IMG_ID --availability-zone nova:compute-01 --flavor 2 --nic net-id=${Tenant_Net_ID} --security-group default --key_name ${KeyName}
+
+
+# MASSIVE Compute Nodes
+Instance_Name=mss3-comp01
+nova boot ${Instance_Name} --image $GLANCE_IMG_ID --availability-zone nova:compute-02 --flavor 2 --nic net-id=${Tenant_Net_ID} --security-group default --key_name ${KeyName}
+
+Instance_Name=mss3-comp02
+nova boot ${Instance_Name} --image $GLANCE_IMG_ID --availability-zone nova:compute-02 --flavor 2 --nic net-id=${Tenant_Net_ID} --security-group default --key_name ${KeyName}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

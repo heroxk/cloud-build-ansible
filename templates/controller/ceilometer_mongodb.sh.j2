@@ -1,0 +1,2 @@
+#!/bin/bash
+mongo --host {{ CONTROLLER_MGT_IP }} --eval 'db = db.getSiblingDB("ceilometer");db.addUser({user: "ceilometer",pwd: "openstack",roles: [ "readWrite", "dbAdmin" ]})'

@@ -1,0 +1,81 @@
+#!/usr/bin/env ansible-playbook
+
+- name: Configure Ceilometer Serviceon Controller Node
+  hosts: controller
+  remote_user: root
+  sudo: True
+  tasks:
+  - name: APT Install Packages
+    action: apt pkg={{ item }} state=installed
+    with_items:
+      - mongodb 
+      - python-pymongo 
+      - python-bson
+
+  - name: Configure 'mongodb.conf'
+    template: src=templates/controller/mongodb.conf.j2 dest=/etc/mongodb.conf owner=root group=root mode=0644
+
+
+  - name: Restart MongoDB Services
+    service: name={{ item }} state=restarted     
+    with_items:
+    - mongodb
+
+  - name: Add Ceilometer user to MongoDB
+    template: src=templates/controller/ceilometer_mongodb.sh.j2 dest=/tmp/ceilometer_mongodb.sh owner=root group=root mode=0744
+
+  - name: Run script
+    shell: /tmp/ceilometer_mongodb.sh
+    ignore_errors: True
+
+  - name: APT Install Packages
+    action: apt pkg={{ item }} state=installed
+    with_items:
+      - ceilometer-api
+      - ceilometer-collector
+      - ceilometer-agent-central 
+      - python-ceilometerclient
+      - ceilometer-agent-notification 
+      - ceilometer-alarm-evaluator 
+      - ceilometer-alarm-notifier
+
+  - name: Configure 'ceilometer.conf'
+    template: src=templates/controller/ceilometer.conf.j2 dest=/etc/ceilometer/ceilometer.conf owner=ceilometer group=ceilometer mode=0644
+
+  - name: Copy 'clean' script 
+    template: src=templates/controller/clean.ceilometer dest=/var/log/ceilometer/clean owner=ceilometer group=ceilometer mode=0744
+
+  - name: Restart Ceilometer Services
+    service: name={{ item }} state=restarted     
+    with_items:
+    - ceilometer-agent-central
+    - ceilometer-agent-notification
+    - ceilometer-alarm-evaluator
+    - ceilometer-alarm-notifier
+    - ceilometer-api
+    - ceilometer-collector
+
+
+#  - name: Configure Cinder DB user
+#    command: "{{item}}"
+#    with_items:
+#      - mysql -uroot -p{{ MYSQL_ROOT_PASS }} -e 'DROP DATABASE cinder;'
+#      - mysql -uroot -p{{ MYSQL_ROOT_PASS }} -e 'CREATE DATABASE cinder;'
+#      - mysql -uroot -p{{ MYSQL_ROOT_PASS }} -e "GRANT ALL PRIVILEGES ON cinder.* TO 'cinder'@'localhost' IDENTIFIED BY '{{ MYSQL_NOVA_PASS }}';"
+#      - mysql -uroot -p{{ MYSQL_ROOT_PASS }} -e "GRANT ALL PRIVILEGES ON cinder.* TO 'cinder'@'%' IDENTIFIED BY '{{ MYSQL_NOVA_PASS }}';"
+#    ignore_errors: True
+
+#  - name: Configure 'cinder.conf'
+#    template: src=templates/storage/cinder.conf.j2 dest=/etc/cinder/cinder.conf owner=cinder group=cinder mode=0640
+
+#  - name: Sync Cinder in DB
+#    shell: cinder-manage db sync
+
+#  - name: Copy 'clean' script 
+#    template: src=templates/storage/clean.cinder dest=/var/log/cinder/clean owner=cinder group=root mode=0700
+
+#  - name: Restart Cinder-related Services
+#    service: name={{ item }} state=restarted     
+#    with_items:
+#    - cinder-scheduler
+#    - cinder-api

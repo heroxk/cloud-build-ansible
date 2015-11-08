@@ -1,0 +1,20 @@
+#!/usr/bin/env ansible-playbook
+- name: Do apt-install 
+  hosts: network
+  remote_user: root
+  sudo: True
+  tasks:
+     - name: Step 1a. APT Install Network Packages
+       action: apt pkg={{ item }} state=installed
+       with_items:
+         - software-properties-common
+         - ubuntu-cloud-keyring
+
+     - name: Step 1b. Add Openstack Repo
+       command: add-apt-repository -y cloud-archive:juno
+
+     - name: Step 1c. apt-get update
+       apt: update_cache=yes
+
+     - name: Step 1d. apt-get upgrade
+       apt: upgrade=dist

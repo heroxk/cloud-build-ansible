@@ -1,0 +1,74 @@
+#!/bin/bash
+export OS_TENANT_NAME=cookbook
+export OS_USERNAME=admin
+export OS_PASSWORD=openstack
+export OS_AUTH_URL=https://{{ KEYSTONE_ADMIN_ENDPOINT }}:35357/v2.0
+export OS_NO_CACHE=1
+export OS_CACERT=/usr/local/etc/keystone/ssl/certs/ca.pem
+export OS_KEY=/usr/local/etc/keystone/ssl/certs/cakey.pem
+
+TENANT_ID=$(keystone tenant-list | awk '/\ cookbook\ / {print $2}')
+echo ${TENANT_ID}
+
+Tenant_Net="cookbook_network_1"
+Tenant_Subnet="cookbook_subnet_1"
+Tenant_Router="cookbook_router_1"
+Instance_Name="myInstance"
+KeyName="demokey"
+
+nova secgroup-delete webserver
+#nova secgroup-create webserver "Web Server Access"
+#nova secgroup-add-rule webserver tcp 80 80 0.0.0.0/0
+#nova secgroup-add-rule webserver tcp 443 443 0.0.0.0/0 
+nova secgroup-add-rule default icmp -1 -1 0.0.0.0/0
+nova secgroup-add-rule default tcp 22 22 0.0.0.0/0
+
+
+# Option 1. Generate New Key
+#mkdir -p /usr/local/nova
+#nova keypair-delete ${KeyName}
+#nova keypair-add ${KeyName} > /usr/local/etc/nova/demokey
+#chmod 0600 /usr/local/etc/nova/demokey
+
+# Option 2. Use Existing Root Key
+nova keypair-add --pub-key ~/.ssh/id_rsa.pub ${KeyName}
+
+
+GLANCE_IMG_ID=$(glance image-list | awk '/trusty/ {print $2}')
+echo $GLANCE_IMG_ID
+
+Tenant_Net_ID=$(neutron net-list | grep ${Tenant_Net} | awk {'print $2'})
+echo ${Tenant_Net_ID}
+
+Nova_Instance_ID=$(neutron net-list | grep ${Instance_Name} | awk {'print $2'})
+echo ${Nova_Instance_ID}
+nova delete ${Nova_Instance_ID}
+
+
+
+# Create Image
+nova boot ${Instance_Name} --image $GLANCE_IMG_ID --flavor 2 --nic net-id=${Tenant_Net_ID} --security-group default --key_name ${KeyName}
+
+
+# Test: Create a Ubuntu Instance
+# nova boot test_instance --image 488f8551-9e49-42a9-92db-a5432de5b194 --flavor 2 --nic net-id=aac8fb0a-6a2f-4cb3-a679-79a81a73cb6d --security-group default --key_name demokey
+# nova get-vnc-console test_instance novnc
+# ip netns
+# ip netns exec qdhcp-aac8fb0a-6a2f-4cb3-a679-79a81a73cb6d ssh -i demokey ubuntu@10.200.0.2
+
+
+# nova floating-ip-associate test_instance 192.172.70.207
+
+
+
+
+
+
+
+
+
+
+
+
+
+

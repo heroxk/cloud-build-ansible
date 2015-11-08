@@ -1,0 +1,70 @@
+#!/usr/bin/env ansible-playbook
+- name: Configure webserver with nginx
+  hosts: kaixi-web1
+  gather_facts: True
+  sudo: True
+  tasks:
+     - debug: var=ansible_distribution
+     - debug: var=hostvars[inventory_hostname]
+
+
+     - name: whoami
+       command: whoami
+       register: login
+     
+#     - debug: msg="{{login.stdout}}"
+     - debug: var=login.stdout
+
+#
+#     - name: check group
+#       command: "groups {{ login.stdout }}"
+
+
+
+
+
+
+
+
+
+
+#       file: >
+#          dest=/etc/nginx/sites-enabled/default
+#          src=/etc/nginx/sites-available/default
+
+
+
+
+
+
+
+
+
+
+#     - name: Configure Interface File
+#       template: src=templates/interfaces.j2 dest=/etc/network/interfaces mode=0644
+
+#     - name: reboot machine
+#       command: shutdown -r now "Complete NIC Config"
+#       async: 0
+#       poll: 0
+#       ignore_errors: true
+
+#     - name: enable configuration
+#       file: >
+#          dest=/etc/nginx/sites-enabled/default
+#          src=/etc/nginx/sites-available/default
+#          state=link
+
+#     - name: restart nginx
+#       service: name=nginx state=restarted
+
+
+#     - name: enable configuration
+#       file: >
+#          dest=/etc/nginx/sites-enabled/default
+#          src=/etc/nginx/sites-available/default
+#          state=link
+
+#     - name: restart nginx
+#       service: name=nginx state=restarted

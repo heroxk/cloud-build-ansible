@@ -1,0 +1,84 @@
+#!/usr/bin/env ansible-playbook
+
+- name: Configure Neutron Part
+  hosts: compute-01
+  remote_user: root
+  sudo: True
+  tasks:
+  - name: APT Install Packages
+    action: apt pkg={{ item }} state=installed
+    with_items:
+      - python-keystone
+      - ntp 
+      - sasl2-bin
+      - neutron-common 
+      - neutron-plugin-ml2 
+      - neutron-plugin-openvswitch-agent
+      - linux-headers-{{ ansible_kernel }} 
+      - build-essential
+      - openvswitch-switch
+      - neutron-l3-agent
+      - neutron-metadata-agent
+      - libvirt-bin 
+      - pm-utils 
+      - sysfsutils
+
+
+  - name: Set up rp_filter
+    copy: src=files/sysctl.conf dest=/etc/sysctl.conf owner=root mode=0644
+    notify: Sysctl Change Apply
+        
+ 
+  - name: Configure 'neutron.conf'
+    template: src=templates/compute/neutron.conf.j2 dest=/etc/neutron/neutron.conf owner=root group=neutron mode=0644
+
+  - name: Configure 'ml2 Plugin'
+    template: src=templates/compute/ml2_conf.ini.j2 dest=/etc/neutron/plugins/ml2/ml2_conf.ini owner=root group=neutron mode=0644
+
+  - name: Configure 'l3_agent.ini'
+    template: src=templates/compute/l3_agent.ini.j2 dest=/etc/neutron/l3_agent.ini owner=neutron group=root mode=0644
+
+  - name: Configure 'metadata agent'
+    template: src=templates/compute/metadata_agent.ini.j2 dest=/etc/neutron/metadata_agent.ini owner=root group=neutron mode=0644
+
+  - name: Configure 'fwaas_driver.ini'
+    template: src=templates/compute/fwaas_driver.ini dest=/etc/neutron/fwaas_driver.ini owner=neutron group=root mode=0644
+
+  - name: Copy 'clean' script 
+    template: src=templates/compute/clean.neutron dest=/var/log/neutron/clean owner=neutron group=root mode=0700
+
+  - name: Restart Services
+    service: name={{ item }} state=restarted     
+    with_items:
+    - openvswitch-switch
+    - neutron-plugin-openvswitch-agent
+#    - neutron-l3-agent
+#    - neutron-metadata-agent
+
+  handlers:
+    - name: Sysctl Change Apply
+      command: sysctl -p
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,33 @@
+[DEFAULT]
+bind_host = 0.0.0.0
+bind_port = 9191
+log_file = /var/log/glance/registry.log
+backlog = 4096
+api_limit_max = 1000
+limit_param_default = 25
+rabbit_host = localhost
+rabbit_port = 5672
+rabbit_use_ssl = false
+rabbit_userid = guest
+rabbit_password = guest
+rabbit_virtual_host = /
+rabbit_notification_exchange = glance
+rabbit_notification_topic = notifications
+rabbit_durable_queues = False
+[database]
+sqlite_db = /var/lib/glance/glance.sqlite
+backend = sqlalchemy
+connection = mysql://glance:openstack@{{ CONTROLLER_HOST }}/glance
+[keystone_authtoken]
+auth_uri = https://{{ KEYSTONE_ADMIN_ENDPOINT }}:35357/v2.0/
+identity_uri = https://{{ KEYSTONE_ADMIN_ENDPOINT }}:5000
+admin_tenant_name = {{ SERVICE_TENANT }}
+admin_user = {{ GLANCE_SERVICE_USER }}
+admin_password = {{ GLANCE_SERVICE_PASS }}
+#signing_dir = $state_path/keystone-signing
+insecure = True
+use_syslog = True
+syslog_log_facility = LOG_LOCAL0
+[paste_deploy]
+config_file = /etc/glance/glance-registry-paste.ini
+flavor = keystone
