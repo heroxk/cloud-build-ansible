@@ -1,0 +1,15 @@
+#!/usr/bin/env ansible-playbook
+
+- name: Build Controller Node
+  hosts: controller-02
+  remote_user: root
+  sudo: True
+  
+  roles:
+  - role: apt-updater
+
+
+#  tasks:
+#  - debug: var={{ inventory_hostname }}
+#  - debug: var={{ ansible_eth0.ipv4.address }}
+

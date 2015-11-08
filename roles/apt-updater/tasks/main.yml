@@ -1,0 +1,35 @@
+---
+- name: Apt Package Installation
+  action: apt pkg={{ item }} state=installed
+  with_items:
+    - software-properties-common
+    - ubuntu-cloud-keyring
+
+- name: Check Repo
+  shell: cat /etc/apt/sources.list.d/cloudarchive-juno.list | egrep -v "#" |grep juno | wc -l
+  register: output
+- debug: var=output.stdout
+
+- name: Add Openstack Repo
+  shell: add-apt-repository -y cloud-archive:juno
+  when: output.stdout == "0"
+
+- name: Doing apt-get update
+  apt: update_cache=yes
+
+- name: Doing apt-get upgrade
+  apt: upgrade=dist
+
+- name: Reboot machine
+  shell: shutdown -r now "Complete APT Update"
+  async: 0
+  poll: 0
+  ignore_errors: true
+
+- name: Wait for ssh server to be running
+  local_action: wait_for port=22 host="{{ inventory_hostname }}" search_regex=OpenSSH
+
+- name: Check SSH Servier
+  shell: service ssh status | grep running
+  register: output
+- debug: var=output.stdout
